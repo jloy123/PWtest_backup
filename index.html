@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Safety Shooter | Learn & Survive</title>
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: radial-gradient(circle at center, #0a0f1e, #03050a);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'Courier New', monospace;
+            overflow: hidden;
+            padding: 12px;
+        }
+        .game-wrapper {
+            position: relative;
+            border-radius: 32px;
+            box-shadow: 0 25px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
+            background: #0c110c;
+            padding: 5px;
+        }
+        canvas {
+            display: block;
+            margin: auto;
+            background: #1e2a1a;
+            cursor: crosshair;
+            border-radius: 24px;
+            box-shadow: 0 0 0 3px #3a5240;
+        }
+        #ui {
+            position: absolute;
+            top: 15px;
+            left: 18px;
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(8px);
+            padding: 10px 20px;
+            border-radius: 28px;
+            border-left: 4px solid #ff7e5e;
+            font-weight: bold;
+            font-size: 14px;
+            letter-spacing: 1px;
+            pointer-events: none;
+            z-index: 20;
+            font-family: monospace;
+            min-width: 260px;
+        }
+        .bar {
+            width: 180px;
+            height: 9px;
+            background: #2b2b2b;
+            border-radius: 20px;
+            overflow: hidden;
+            margin: 4px 0 6px 0;
+        }
+        .fill {
+            height: 100%;
+            width: 100%;
+            background: #e34d4d;
+            border-radius: 20px;
+            transition: width 0.1s ease;
+        }
+        #xp.fill { background: #3cc7f2; box-shadow: 0 0 4px #00ccff; }
+        #healBar.fill { background: #2ecc71; box-shadow: 0 0 3px #2ecc71; width: 0%; }
+        .stats-row {
+            display: flex;
+            gap: 18px;
+            margin-top: 5px;
+            font-size: 13px;
+            flex-wrap: wrap;
+        }
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            background: rgba(0, 0, 0, 0.96);
+            backdrop-filter: blur(12px);
+            z-index: 30;
+            border-radius: 24px;
+            transition: 0.2s;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        button {
+            background: #2c2f3a;
+            border: none;
+            color: white;
+            font-weight: bold;
+            font-size: 1rem;
+            padding: 8px 24px;
+            margin: 8px;
+            border-radius: 60px;
+            cursor: pointer;
+            transition: 0.1s linear;
+            box-shadow: 0 3px 0 #0f0f17;
+            font-family: monospace;
+        }
+        button:hover { background: #4a5a72; transform: translateY(-2px); box-shadow: 0 5px 0 #0f0f17; }
+        button:active { transform: translateY(2px); box-shadow: 0 1px 0 #0f0f17; }
+        .restart-btn { background: #b53b3b; box-shadow: 0 4px 0 #631e1e; font-size: 1.1rem; padding: 10px 28px; }
+        .nav-btn { background: #3a3a55; font-size: 0.9rem; padding: 6px 18px; margin: 5px; }
+        h2 { margin-bottom: 8px; text-shadow: 0 2px 2px black; font-size: 1.8rem; letter-spacing: 2px; }
+        h3 { color: #ffcc77; margin: 15px 0 5px 0; }
+        .class-buttons { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; margin-top: 10px; }
+        .subnote { font-size: 11px; opacity: 0.8; margin-top: 20px; }
+        .rules-panel {
+            background: rgba(0,0,0,0.6);
+            border-radius: 24px;
+            padding: 12px 20px;
+            margin: 20px 15px 0 15px;
+            max-width: 550px;
+            text-align: left;
+            font-size: 11px;
+            border: 1px solid #ffaa44;
+        }
+        .restart-corner {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: #000000aa;
+            backdrop-filter: blur(8px);
+            padding: 6px 16px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: bold;
+            border: 1px solid #ffaa66;
+            z-index: 25;
+            font-family: monospace;
+            font-size: 14px;
+            color: #ffcc99;
+            transition: 0.1s;
+        }
+        .restart-corner:hover { background: #b53b3b; border-color: white; transform: scale(1.02); }
+        .powerup-ui {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-size: 14px;
+            font-weight: bold;
+            font-family: monospace;
+            z-index: 20;
+            border: 1px solid gold;
+            pointer-events: none;
+        }
+        .skin-option {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin: 10px;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: 0.1s;
+        }
+        .skin-option:hover { transform: scale(1.1); border-color: white; }
+        .skin-selected { border-color: gold; box-shadow: 0 0 10px gold; }
+        .class-card {
+            background: rgba(0,0,0,0.5);
+            border-radius: 16px;
+            padding: 12px;
+            margin: 8px;
+            text-align: center;
+            min-width: 140px;
+        }
+        .class-stats { font-size: 10px; color: #ddd; margin-top: 5px; }
+        .quiz-container {
+            max-width: 550px;
+            width: 100%;
+            background: #FFFBF0;
+            border-radius: 48px;
+            padding: 20px;
+            text-align: center;
+            color: #1E3B4F;
+            font-family: 'Segoe UI', system-ui;
+            box-shadow: 0 20px 35px black;
+        }
+        .quiz-question {
+            background: #E9F3F8;
+            border-radius: 40px;
+            padding: 18px;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .quiz-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .quiz-btn {
+            background: #F4C542;
+            color: #2C3E50;
+            font-size: 0.9rem;
+            padding: 10px 14px;
+            min-width: 160px;
+            box-shadow: 0 3px 0 #B7621A;
+        }
+        .quiz-btn.correct-feedback {
+            background: #2E8B57;
+            color: white;
+        }
+        .quiz-btn.wrong-feedback {
+            background: #CD5C5C;
+            color: white;
+        }
+        .quiz-feedback {
+            background: #FFF2E0;
+            border-radius: 32px;
+            padding: 12px;
+            margin-top: 15px;
+            font-size: 0.9rem;
+        }
+        .instruction-manual {
+            background: #0f172ad9;
+            backdrop-filter: blur(12px);
+            border: 2px solid #ffcc77;
+            border-radius: 32px;
+            padding: 24px;
+            max-width: 520px;
+            text-align: left;
+            color: #f0f0f0;
+            font-family: monospace;
+        }
+        .instruction-manual h2 {
+            text-align: center;
+            color: #ffdd99;
+            margin-top: 0;
+        }
+        .instruction-manual ul {
+            line-height: 1.7;
+            font-size: 1rem;
+        }
+        .instruction-manual li {
+            margin: 8px 0;
+        }
+        .warning-text {
+            color: #ffaa66;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<div class="game-wrapper">
+    <canvas id="gameCanvas" width="780" height="660"></canvas>
+    <div id="ui">
+        HP <div class="bar"><div id="hpBar" class="fill" style="width:100%"></div></div>
+        XP <div class="bar"><div id="xpBar" class="fill" style="width:0%"></div></div>
+        REGEN <div class="bar"><div id="healBar" class="fill" style="background:#2ecc71; width:0%"></div></div>
+        <div class="stats-row">
+            <span>SCORE: <strong id="scoreVal">0</strong></span>&nbsp;|&nbsp;
+            <span>LVL <strong id="lvlVal">1</strong></span>&nbsp;|&nbsp;
+            <span id="classLabel">ASSAULT</span>
+        </div>
+        <div id="evoHint" style="font-size:10px; margin-top:5px; color:#d4af37;"></div>
+    </div>
+    <div class="powerup-ui" id="powerupDisplay">NO POWERUP</div>
+    <div id="overlay"></div>
+    <div class="restart-corner" id="quickRestartBtn">RESTART</div>
+</div>
+
+<script>
+    (function(){
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const overlayDiv = document.getElementById('overlay');
+        const quickRestart = document.getElementById('quickRestartBtn');
+        const powerupDisplay = document.getElementById('powerupDisplay');
+
+        // ---------- SKIN SYSTEM ----------
+        let currentSkin = "blue";
+        const skinColors = {
+            blue: { main: "#42f5aa", dark: "#269e6b", light: "#88ffcc" },
+            red: { main: "#ff5555", dark: "#cc3333", light: "#ff8888" },
+            green: { main: "#55ff55", dark: "#33aa33", light: "#88ff88" },
+            yellow: { main: "#ffdd44", dark: "#ccaa22", light: "#ffee88" }
+        };
+        
+        function setSkin(color) {
+            currentSkin = color;
+            updateUI();
+        }
+        
+        // ---------- ONLINE SAFETY QUIZ (10 questions) ----------
+        const safetyQuestions = [
+            { text: "A game asks for your real name and address to send you a prize. What do you do?", options: ["Give the info to get the prize", "Ask a parent first", "Type a fake name", "Ignore it but keep playing"], correctIndex: 1, explanation: "Always ask a parent before sharing real name or address online.", correctMsg: "Great job! Asking a parent keeps you safe." },
+            { text: "Someone you don't know sends you a friend request. What is safest?", options: ["Accept, more friends = more fun", "Accept but block them later", "Decline and tell a parent", "Ask them questions first"], correctIndex: 2, explanation: "Only accept friend requests from people you know in real life.", correctMsg: "Perfect! Only add real friends. Tell a parent about strangers." },
+            { text: "Your online friend asks for your password to 'help' you. What do you say?", options: ["Sure, here is my password", "No, passwords are secret", "Only give half the password", "Ask what they need it for"], correctIndex: 1, explanation: "Never share your password with anyone except your parents.", correctMsg: "Excellent! Keep passwords secret." },
+            { text: "You see something online that makes you feel scared or sad. What should you do?", options: ["Keep watching alone", "Tell a parent or teacher", "Send it to a friend", "Close it and forget"], correctIndex: 1, explanation: "Always tell a trusted adult when something online bothers you.", correctMsg: "So smart! Telling an adult is always the right choice." },
+            { text: "A stranger messages you saying, 'You are so cool! Send me a picture of yourself.' What is safest?", options: ["Send a picture to be nice", "Say no and block them", "Send a picture of my pet", "Ask why they want it"], correctIndex: 1, explanation: "Never send photos to strangers. Block them and tell a parent.", correctMsg: "Perfect! Block strangers who ask for photos." },
+            { text: "You play games for 3 hours and feel tired. What is the best choice?", options: ["Keep playing all night", "Take a break and rest", "Play one more hour", "Get snacks and keep going"], correctIndex: 1, explanation: "Taking breaks is healthy for your eyes, body, and brain.", correctMsg: "Great job! Taking breaks keeps you healthy." },
+            { text: "Someone online says mean things to you. What should you do?", options: ["Say mean things back", "Cry and say nothing", "Tell a parent and block them", "Ignore and keep talking"], correctIndex: 2, explanation: "Tell a parent right away when someone is mean. Block them.", correctMsg: "You did the bravest thing! Telling a parent stops the meanness." },
+            { text: "A website asks for your phone number to 'verify your age.' What is safest?", options: ["Type my real number", "Type a fake number", "Ask a parent first", "Close the website"], correctIndex: 2, explanation: "Never give your phone number online without a parent.", correctMsg: "Smart choice! Parents help decide what is safe to share." },
+            { text: "You want to make a strong password. Which one is safest?", options: ["123456", "password", "MyName2024", "Tiger9Lemon7"], correctIndex: 3, explanation: "A strong password has letters, numbers, and symbols.", correctMsg: "Excellent! That is a super strong password." },
+            { text: "A friend shares a secret about another kid online. What should you do?", options: ["Share it with more people", "Keep the secret forever", "Tell a trusted adult", "Ask the friend to stop"], correctIndex: 2, explanation: "If a secret could hurt someone, tell an adult.", correctMsg: "You are a good friend! Telling an adult helps everyone stay safe." }
+        ];
+        let currentQuizIndex = 0;
+        
+        // ---------- SHOOTER GLOBALS ----------
+        let player = null;
+        let bullets = [];
+        let enemies = [];
+        let boss = null;
+        let bossProjectiles = [];
+        let keys = {};
+        let mouse = { x: canvas.width/2, y: canvas.height/2 };
+        let running = false;
+        let gamePaused = false;
+        let score = 0;
+        let xp = 0;
+        let level = 1;
+        
+        let healingUpgradeLevel = 0;
+        let baseHealingPerSecond = 0;
+        const MAX_HEALING_UPGRADE = 5;
+        
+        let upgrades = { damage: 1, fireRate: 1, speed: 1, bulletSpeed: 1 };
+        let upgradeLevels = { damage: 0, fireRate: 0, speed: 0, bulletSpeed: 0 };
+        const MAX_UPGRADE_LEVEL = 10;
+        
+        let lastShot = 0;
+        let shootHeld = false;
+        let currentClass = "Assault";
+        let evolvedForm = null;
+        
+        let lastBossDeathTime = 0;
+        let invincibleFrames = 0;
+        let invincibleDuration = 60;
+        
+        let currentPowerup = null;
+        let nextPowerupSpawn = 0;
+        let powerupObject = null;
+        
+        let bossBaseHp = 480;
+        let bossDamage = 20;
+        let lastHealTimestamp = 0;
+        
+        // ----- UI helpers -----
+        function updateUI() {
+            if(!player) return;
+            let hpPercent = (player.hp / player.maxHp) * 100;
+            let xpPercent = (xp / 50) * 100;
+            let healPercent = (healingUpgradeLevel / MAX_HEALING_UPGRADE) * 100;
+            document.getElementById('hpBar').style.width = Math.max(0, hpPercent) + '%';
+            document.getElementById('xpBar').style.width = Math.min(100, Math.max(0, xpPercent)) + '%';
+            document.getElementById('healBar').style.width = healPercent + '%';
+            document.getElementById('scoreVal').innerText = score;
+            document.getElementById('lvlVal').innerText = level;
+            let className = currentClass;
+            if(evolvedForm) className += ` (${evolvedForm})`;
+            document.getElementById('classLabel').innerText = className;
+            let evoMsg = (level >= 25 && !evolvedForm) ? "LVL 25: CLASS EVOLUTION READY!" : (evolvedForm ? `${evolvedForm} ACTIVE` : "");
+            document.getElementById('evoHint').innerHTML = evoMsg + ` | REGEN: ${(baseHealingPerSecond*100).toFixed(1)}%/s`;
+            
+            if(currentPowerup === "bomb") powerupDisplay.innerHTML = "BOMB (press E)";
+            else if(currentPowerup === "health") powerupDisplay.innerHTML = "HEALTH POTION (press E)";
+            else if(currentPowerup === "invincible") powerupDisplay.innerHTML = "INVINCIBILITY (press E)";
+            else powerupDisplay.innerHTML = "NO POWERUP";
+        }
+        
+        function applyHealing(now) {
+            if(!player || player.hp <= 0 || player.hp >= player.maxHp || gamePaused) return;
+            if(!lastHealTimestamp) lastHealTimestamp = now;
+            let delta = Math.min(0.1, (now - lastHealTimestamp) / 1000);
+            if(delta > 0 && baseHealingPerSecond > 0) {
+                let healAmount = baseHealingPerSecond * delta * (player.maxHp / 100);
+                if(healAmount > 0 && player.hp < player.maxHp) {
+                    player.hp = Math.min(player.maxHp, player.hp + healAmount);
+                    updateUI();
+                }
+            }
+            lastHealTimestamp = now;
+        }
+        
+        function spawnPowerup(now) {
+            if(!running || gamePaused) return;
+            if(!nextPowerupSpawn) nextPowerupSpawn = now + 10000;
+            if(now >= nextPowerupSpawn && !powerupObject) {
+                let types = ["bomb", "health", "invincible"];
+                let randomType = types[Math.floor(Math.random() * 3)];
+                powerupObject = { x: Math.random() * (canvas.width - 60) + 30, y: Math.random() * (canvas.height - 60) + 30, type: randomType };
+                nextPowerupSpawn = now + 10000;
+            }
+        }
+        
+        function usePowerup() {
+            if(!currentPowerup || gamePaused) return;
+            if(currentPowerup === "bomb") {
+                enemies = [];
+                if(boss) { boss.hp -= 200; if(boss.hp <= 0) { boss = null; score += 55; xp += 45; updateUI(); } }
+                currentPowerup = null;
+            } else if(currentPowerup === "health") {
+                let healAmount = player.maxHp * 0.1;
+                player.hp = Math.min(player.maxHp, player.hp + healAmount);
+                currentPowerup = null;
+                updateUI();
+            } else if(currentPowerup === "invincible") {
+                invincibleFrames = invincibleDuration;
+                currentPowerup = null;
+            }
+            updateUI();
+        }
+        
+        function collectPowerup() {
+            if(!powerupObject || gamePaused) return;
+            let dist = Math.hypot(player.x - powerupObject.x, player.y - powerupObject.y);
+            if(dist < player.size + 12) {
+                currentPowerup = powerupObject.type;
+                powerupObject = null;
+                updateUI();
+            }
+        }
+        
+        // ----- UPGRADE MENU -----
+        function showUpgradeMenu() {
+            if(!running) return;
+            gamePaused = true;
+            overlayDiv.style.display = "flex";
+            overlayDiv.innerHTML = `
+                <h2>UPGRADE (max ${MAX_UPGRADE_LEVEL})</h2>
+                <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
+                    <button id="upgDmg">DAMAGE +0.1 (${upgradeLevels.damage}/${MAX_UPGRADE_LEVEL})</button>
+                    <button id="upgRate">FIRE RATE +0.1 (${upgradeLevels.fireRate}/${MAX_UPGRADE_LEVEL})</button>
+                    <button id="upgSpd">SPEED +0.1 (${upgradeLevels.speed}/${MAX_UPGRADE_LEVEL})</button>
+                    <button id="upgBullet">BULLET SPD +0.8 (${upgradeLevels.bulletSpeed}/${MAX_UPGRADE_LEVEL})</button>
+                    <button id="upgHeal">HEALING +0.05/s (${healingUpgradeLevel}/${MAX_HEALING_UPGRADE})</button>
+                </div>
+                <div class="subnote">Each upgrade increases stats. Healing stacks up to 0.25/s</div>
+                <button id="closeUpgradeBtn" class="nav-btn" style="margin-top:15px;">CLOSE</button>
+            `;
+            document.getElementById('upgDmg').onclick = () => { if(upgradeLevels.damage < MAX_UPGRADE_LEVEL) { upgrades.damage += 0.1; upgradeLevels.damage++; } closeUpgrade(); };
+            document.getElementById('upgRate').onclick = () => { if(upgradeLevels.fireRate < MAX_UPGRADE_LEVEL) { upgrades.fireRate += 0.1; upgradeLevels.fireRate++; } closeUpgrade(); };
+            document.getElementById('upgSpd').onclick = () => { if(upgradeLevels.speed < MAX_UPGRADE_LEVEL) { upgrades.speed += 0.1; upgradeLevels.speed++; } closeUpgrade(); };
+            document.getElementById('upgBullet').onclick = () => { if(upgradeLevels.bulletSpeed < MAX_UPGRADE_LEVEL) { upgrades.bulletSpeed += 0.8; upgradeLevels.bulletSpeed++; } closeUpgrade(); };
+            document.getElementById('upgHeal').onclick = () => { if(healingUpgradeLevel < MAX_HEALING_UPGRADE) { healingUpgradeLevel++; baseHealingPerSecond = healingUpgradeLevel * 0.05; updateUI(); } closeUpgrade(); };
+            document.getElementById('closeUpgradeBtn').onclick = closeUpgrade;
+        }
+        
+        function closeUpgrade() {
+            overlayDiv.style.display = "none";
+            gamePaused = false;
+        }
+        
+        // ----- EVOLUTION -----
+        function showEvolutionChoice() {
+            if(evolvedForm) return;
+            gamePaused = true;
+            if(player) { player.hp = player.maxHp; updateUI(); }
+            overlayDiv.style.display = "flex";
+            let choiceHtml = "";
+            if(currentClass === "Assault") {
+                choiceHtml = `<h2>CLASS EVOLUTION (Lv.25)</h2>
+                <div><button id="evoMachine">MACHINE GUN (spray)</button> <span style="margin:0 8px">or</span> <button id="evoDouble">DOUBLE GUNNER</button></div>
+                <div class="subnote">Machine gun: random spray bullets | Double Gunner: twin shots</div>`;
+            } else if(currentClass === "Sniper") {
+                choiceHtml = `<h2>SNIPER ASCENSION</h2>
+                <div><button id="evoGiant">GIANT SNIPER (big projectile)</button> <span style="margin:0 8px">or</span> <button id="evoHoming">HOMING MISSILES</button></div>
+                <div class="subnote">Giant: larger piercing | Homing: lower cooldown + tracking</div>`;
+            } else {
+                choiceHtml = `<h2>TANK METAMORPHOSIS</h2>
+                <div><button id="evoTiger">TIGER TANK (2x HP)</button> <span style="margin:0 8px">or</span> <button id="evoStationary">STATIONARY TANK (slow + dmg)</button></div>
+                <div class="subnote">Tiger: double health pool | Stationary: slower but massive damage</div>`;
+            }
+            overlayDiv.innerHTML = choiceHtml + `<div style="margin-top:12px;"><button id="cancelEvo">Later</button></div>`;
+            if(currentClass === "Assault") {
+                document.getElementById("evoMachine")?.addEventListener("click",()=>{ applyEvolution("Machine Gun"); });
+                document.getElementById("evoDouble")?.addEventListener("click",()=>{ applyEvolution("Double Gunner"); });
+            } else if(currentClass === "Sniper") {
+                document.getElementById("evoGiant")?.addEventListener("click",()=>{ applyEvolution("Giant Sniper"); });
+                document.getElementById("evoHoming")?.addEventListener("click",()=>{ applyEvolution("Homing"); });
+            } else if(currentClass === "Tank") {
+                document.getElementById("evoTiger")?.addEventListener("click",()=>{ applyEvolution("Tiger Tank"); });
+                document.getElementById("evoStationary")?.addEventListener("click",()=>{ applyEvolution("Stationary Tank"); });
+            }
+            document.getElementById("cancelEvo")?.addEventListener("click",()=>{ closeEvolutionLater(); });
+        }
+        
+        function applyEvolution(evolution) {
+            evolvedForm = evolution;
+            if(evolution === "Tiger Tank") { player.maxHp = player.maxHp * 2; player.hp = player.maxHp; updateUI(); }
+            else if(evolution === "Stationary Tank") { player.speed = Math.max(0.9, player.speed * 0.55); player.dmg = player.dmg * 2.2; }
+            else if(evolution === "Homing") { player.cd = player.cd * 0.65; }
+            overlayDiv.style.display = "none";
+            gamePaused = false;
+            updateUI();
+        }
+        
+        function closeEvolutionLater() {
+            overlayDiv.style.display = "none";
+            gamePaused = false;
+        }
+        
+        // ---------- QUIZ INTEGRATION WITH -10 HP PENALTY ----------
+        function showSafetyQuiz(onResult) {
+            gamePaused = true;
+            const q = safetyQuestions[currentQuizIndex % safetyQuestions.length];
+            currentQuizIndex++;
+            let answerLock = false;
+            let wasCorrect = false;
+            overlayDiv.style.display = "flex";
+            overlayDiv.innerHTML = `
+                <div class="quiz-container">
+                    <h2 style="color:#1E3B4F;">Safety Check</h2>
+                    <div class="quiz-question">${q.text}</div>
+                    <div class="quiz-options" id="quizOptions"></div>
+                    <div id="quizFeedback" class="quiz-feedback" style="display:none;"></div>
+                    <button id="quizContinueBtn" style="display:none;" class="nav-btn">Continue</button>
+                </div>
+            `;
+            const optionsDiv = document.getElementById("quizOptions");
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement("button");
+                btn.textContent = opt;
+                btn.classList.add("quiz-btn");
+                btn.onclick = () => {
+                    if(answerLock) return;
+                    answerLock = true;
+                    const isCorrect = (idx === q.correctIndex);
+                    wasCorrect = isCorrect;
+                    const feedbackDiv = document.getElementById("quizFeedback");
+                    feedbackDiv.style.display = "block";
+                    if(isCorrect) {
+                        feedbackDiv.innerHTML = `<strong>CORRECT!</strong> ${q.correctMsg}<br><em>Safety rule: ${q.explanation}</em>`;
+                        document.querySelectorAll(".quiz-btn").forEach(b => b.disabled = true);
+                        if(idx === q.correctIndex) btn.classList.add("correct-feedback");
+                        else document.querySelectorAll(".quiz-btn")[q.correctIndex]?.classList.add("correct-feedback");
+                    } else {
+                        feedbackDiv.innerHTML = `<strong>WRONG!</strong> The safest choice: "${q.options[q.correctIndex]}".<br><em>${q.explanation}</em><br><span style="color:#cc3300; font-weight:bold;">⚠️ PENALTY: You lose 10 HP!</span>`;
+                        btn.classList.add("wrong-feedback");
+                        document.querySelectorAll(".quiz-btn")[q.correctIndex]?.classList.add("correct-feedback");
+                        document.querySelectorAll(".quiz-btn").forEach(b => b.disabled = true);
+                    }
+                    const contBtn = document.getElementById("quizContinueBtn");
+                    contBtn.style.display = "inline-block";
+                    contBtn.onclick = () => {
+                        overlayDiv.style.display = "none";
+                        gamePaused = false;
+                        onResult(wasCorrect);
+                    };
+                };
+                optionsDiv.appendChild(btn);
+            });
+        }
+        
+        // ----- LEVEL UP TRIGGER (quiz then upgrade/evo with penalty) -----
+        function handleLevelUp() {
+            if(!running) return;
+            const evolutionReady = (level === 5 && !evolvedForm);
+            showSafetyQuiz((isCorrect) => {
+                // Apply -10 HP penalty if wrong answer
+                if(!isCorrect && player) {
+                    player.hp = Math.max(0, player.hp - 10);
+                    updateUI();
+                    if(player.hp <= 0) {
+                        running = false;
+                        gamePaused = false;
+                        showGameOverOverlay();
+                        return;
+                    }
+                }
+                if(isCorrect) {
+                    if(evolutionReady) {
+                        showEvolutionChoice();
+                    } else {
+                        showUpgradeMenu();
+                    }
+                } else {
+                    // wrong answer: just resume, penalty already applied
+                    gamePaused = false;
+                }
+            });
+        }
+        
+        // ----- SHOOTING & GAME MECHANICS (unchanged) -----
+        function shoot() {
+            if(!running || gamePaused || !player) return;
+            let now = performance.now();
+            let fireDelay = player.cd / (upgrades.fireRate || 1);
+            if(now - lastShot < fireDelay) return;
+            lastShot = now;
+            let baseDmg = player.dmg * upgrades.damage;
+            let dx = mouse.x - player.x, dy = mouse.y - player.y;
+            let len = Math.hypot(dx,dy)||1;
+            let normX = dx/len, normY = dy/len;
+            if(evolvedForm === "Double Gunner") {
+                let angle = Math.atan2(dy,dx);
+                let offset = 0.2;
+                bullets.push({ x:player.x, y:player.y, dx:Math.cos(angle-offset), dy:Math.sin(angle-offset), dmg:baseDmg*0.9, size:6, homing:false, giant:false });
+                bullets.push({ x:player.x, y:player.y, dx:Math.cos(angle+offset), dy:Math.sin(angle+offset), dmg:baseDmg*0.9, size:6, homing:false, giant:false });
+            } else if(evolvedForm === "Machine Gun") {
+                for(let i=0;i<3;i++) { let spread = (Math.random() - 0.5) * 0.7; let angleSpread = Math.atan2(dy,dx) + spread; bullets.push({ x:player.x, y:player.y, dx:Math.cos(angleSpread), dy:Math.sin(angleSpread), dmg:baseDmg*0.7, size:5, homing:false, giant:false }); }
+            } else if(evolvedForm === "Giant Sniper") {
+                bullets.push({ x:player.x, y:player.y, dx:normX, dy:normY, dmg:baseDmg*1.9, size:14, homing:false, giant:true });
+            } else if(evolvedForm === "Homing") {
+                bullets.push({ x:player.x, y:player.y, dx:normX, dy:normY, dmg:baseDmg*1.2, size:7, homing:true, homingTarget:null, giant:false });
+            } else {
+                bullets.push({ x:player.x, y:player.y, dx:normX, dy:normY, dmg:baseDmg, size:6, homing:false, giant:false });
+            }
+            if(!evolvedForm || (evolvedForm !== "Double Gunner" && evolvedForm !== "Machine Gun" && evolvedForm !== "Giant Sniper" && evolvedForm !== "Homing")) {
+                bullets.push({ x:player.x, y:player.y, dx:normX, dy:normY, dmg:baseDmg, size:6, homing:false, giant:false });
+            }
+        }
+        
+        function spawnEnemy() { let hpScale = 28 + Math.floor(level * 1.5); enemies.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, hp: hpScale, maxHp: hpScale, size: 12, speed: 1.4 + level*0.025, dmg: 6 }); }
+        function trySpawnBoss(now) { if(boss) return; if(lastBossDeathTime > 0 && (now - lastBossDeathTime) < 10000) return; if(score >= 16 && !boss) { let multiplier = 1 + (level / 16); let finalHp = Math.floor(bossBaseHp * multiplier); let finalDmg = Math.floor(bossDamage * (1 + level/21)); boss = { x: canvas.width/2, y: 100, size: 48, hp: finalHp, maxHp: finalHp, speed: 0.85 + level*0.02, dmg: finalDmg, shootTimer: 0 }; } }
+        function bossShoot() { if(!boss || !running || gamePaused || !player) return; let dx = player.x - boss.x, dy = player.y - boss.y; let len = Math.hypot(dx,dy)||1; bossProjectiles.push({ x: boss.x, y: boss.y, dx: dx/len, dy: dy/len, dmg: boss.dmg, size: 8, speed: 3.8 }); }
+        
+        function updateGame(now) {
+            if(!running || gamePaused) return;
+            applyHealing(now); spawnPowerup(now); collectPowerup(); trySpawnBoss(now);
+            if(invincibleFrames > 0) invincibleFrames--;
+            let mx=0,my=0;
+            if(keys["w"]||keys["arrowup"]) my-=1; if(keys["s"]||keys["arrowdown"]) my+=1; if(keys["a"]||keys["arrowleft"]) mx-=1; if(keys["d"]||keys["arrowright"]) mx+=1;
+            if(mx!==0||my!==0){ let len=Math.hypot(mx,my); mx/=len; my/=len; player.x += mx * player.speed * upgrades.speed; player.y += my * player.speed * upgrades.speed; }
+            let margin = player.size+3;
+            player.x = Math.min(Math.max(margin, player.x), canvas.width - margin); player.y = Math.min(Math.max(margin, player.y), canvas.height - margin);
+            player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+            if(shootHeld) shoot();
+            if(enemies.length < 14 && Math.random()<0.022) spawnEnemy();
+            // bullet collisions (simplified)
+            for(let i=0;i<bullets.length;i++){ let b=bullets[i]; let spd=6.5+(upgrades.bulletSpeed||0); if(b.giant) spd=5.8; b.x+=b.dx*spd; b.y+=b.dy*spd; if(b.x<-50||b.x>canvas.width+50||b.y<-50||b.y>canvas.height+50){ bullets.splice(i,1); i--; continue; } let hit=false; for(let j=0;j<enemies.length;j++){ let e=enemies[j]; if(Math.hypot(b.x-e.x, b.y-e.y) < e.size+ (b.giant?10:6)){ e.hp-=b.dmg; bullets.splice(i,1); if(e.hp<=0){ enemies.splice(j,1); score++; xp+=12; updateUI(); } hit=true; break; } } if(hit) { i--; continue; } if(boss && Math.hypot(b.x-boss.x, b.y-boss.y) < boss.size+7){ boss.hp-=b.dmg; bullets.splice(i,1); if(boss.hp<=0){ boss=null; lastBossDeathTime=now; score+=55; xp+=45; updateUI(); } i--; continue; } }
+            for(let e of enemies){ let dist = Math.hypot(player.x-e.x, player.y-e.y); if(dist < e.size+player.size && invincibleFrames <= 0){ player.hp -= 0.5; if(player.hp<=0){ running=false; showGameOverOverlay(); return; } updateUI(); } let dxp = player.x - e.x, dyp = player.y - e.y; let lenE = Math.hypot(dxp,dyp)||1; e.x += (dxp/lenE)*e.speed; e.y += (dyp/lenE)*e.speed; }
+            if(boss){ let dxB = player.x - boss.x, dyB = player.y - boss.y; let lenB = Math.hypot(dxB,dyB)||1; boss.x += (dxB/lenB)*boss.speed; boss.y += (dyB/lenB)*boss.speed; boss.x = Math.min(Math.max(25,boss.x), canvas.width-25); boss.y = Math.min(Math.max(40,boss.y), canvas.height-50); if(Math.hypot(player.x-boss.x, player.y-boss.y) < boss.size+player.size && invincibleFrames <= 0){ player.hp -= boss.dmg*0.65; if(player.hp<=0){ running=false; showGameOverOverlay(); return; } updateUI(); } if(boss.shootTimer <=0){ bossShoot(); boss.shootTimer = 40; } else boss.shootTimer--; }
+            for(let i=0;i<bossProjectiles.length;i++){ let p=bossProjectiles[i]; p.x+=p.dx*p.speed; p.y+=p.dy*p.speed; if(p.x<-30||p.x>canvas.width+30||p.y<-30||p.y>canvas.height+30){ bossProjectiles.splice(i,1); i--; continue; } if(Math.hypot(p.x-player.x, p.y-player.y) < player.size+7 && invincibleFrames <= 0){ player.hp -= p.dmg; bossProjectiles.splice(i,1); if(player.hp<=0){ running=false; showGameOverOverlay(); return; } updateUI(); i--; } }
+            while(xp >= 50 && running && !gamePaused){ xp -= 50; level++; updateUI(); handleLevelUp(); if(gamePaused) break; if(!running) return; }
+            if(player.hp<=0){ running=false; showGameOverOverlay(); }
+        }
+        
+        function showGameOverOverlay(){ gamePaused = true; overlayDiv.style.display="flex"; overlayDiv.innerHTML=`<h2>GAME OVER</h2><div>Score: ${score} | Level ${level}</div><button id="restartGameOverBtn" class="restart-btn">RESTART</button>`; document.getElementById("restartGameOverBtn")?.addEventListener("click",()=>{ fullGameRestart(); }); }
+        function fullGameRestart() { running=false; gamePaused=false; bullets=[]; enemies=[]; boss=null; bossProjectiles=[]; score=0; xp=0; level=1; upgrades={damage:1, fireRate:1, speed:1, bulletSpeed:1}; upgradeLevels={damage:0, fireRate:0, speed:0, bulletSpeed:0}; healingUpgradeLevel=0; baseHealingPerSecond=0; evolvedForm=null; currentPowerup=null; powerupObject=null; invincibleFrames=0; lastBossDeathTime=0; nextPowerupSpawn=0; currentQuizIndex = 0; showMainMenu(); }
+        
+        // ----- INSTRUCTION MANUAL + START GATE -----
+        function resetAndStartGame(className) {
+            // full reset + create player
+            currentClass = className;
+            evolvedForm = null;
+            let baseStats = {};
+            if(className === "Assault") baseStats = {hp:110, maxHp:110, spd:3.2, cd:240, dmg:11};
+            else if(className === "Sniper") baseStats = {hp:75, maxHp:75, spd:2.6, cd:480, dmg:27};
+            else baseStats = {hp:280, maxHp:280, spd:2.1, cd:340, dmg:9};
+            player = { x: canvas.width/2, y: canvas.height/2, size: 16, hp: baseStats.hp, maxHp: baseStats.maxHp, speed: baseStats.spd, cd: baseStats.cd, dmg: baseStats.dmg, angle:0 };
+            bullets = []; enemies = []; boss = null; bossProjectiles = [];
+            score = 0; xp = 0; level = 1;
+            upgrades = { damage:1, fireRate:1, speed:1, bulletSpeed:1 };
+            upgradeLevels = { damage:0, fireRate:0, speed:0, bulletSpeed:0 };
+            healingUpgradeLevel = 0; baseHealingPerSecond = 0;
+            currentPowerup = null; powerupObject = null;
+            invincibleFrames = 0; lastBossDeathTime = 0; nextPowerupSpawn = 0;
+            running = true; gamePaused = false;
+            updateUI();
+            overlayDiv.style.display = "none";
+        }
+        
+        function showInstructionManualThenStart(className) {
+            gamePaused = true;
+            overlayDiv.style.display = "flex";
+            overlayDiv.innerHTML = `
+                <div class="instruction-manual">
+                    <h2> INSTRUCTION MANUAL</h2>
+                    <ul>
+                        <li> <strong>Move:</strong> WASD or Arrow Keys</li>
+                        <li> <strong>Shoot:</strong> Hold <strong>Left Mouse Button</strong> or <strong>SPACE</strong> key</li>
+                        <li> <strong>Use Powerup:</strong> Press <strong>E</strong> (Bomb / Heal / Invincible)</li>
+                        <li> <strong>Safety Quiz:</strong> Appears on EVERY level up!</li>
+                        <li> <strong>Wrong answer penalty:</strong> <span class="warning-text">-10 HP</span> (can cause game over!)</li>
+                        <li> <strong>Correct answer:</strong> Get a powerful upgrade or evolution (at lvl 25).</li>
+                        <li> Boss appears at score 16+. Powerups every 10s.</li>
+                        <li> Regen upgrades heal you over time.</li>
+                    </ul>
+                    <div style="text-align:center;"><button id="confirmStartBtn" class="restart-btn"> START GAME </button></div>
+                </div>
+            `;
+            document.getElementById("confirmStartBtn").onclick = () => {
+                resetAndStartGame(className);
+            };
+        }
+        
+        // ----- MAIN MENU (class selection triggers instruction) -----
+        function showMainMenu() {
+            gamePaused = true;
+            running = false;
+            overlayDiv.style.display = "flex";
+            overlayDiv.innerHTML = `
+                <h2>BRAWL SHOOTER + SAFETY QUIZ</h2>
+                <div class="class-buttons">
+                    <button id="classAssaultBtn">ASSAULT</button>
+                    <button id="classSniperBtn">SNIPER</button>
+                    <button id="classTankBtn">TANK (280 HP)</button>
+                </div>
+                <div style="margin-top: 15px;">
+                    <button id="showClassesBtn" class="nav-btn">SHOW CLASSES</button>
+                    <button id="rulesBtn" class="nav-btn">GAME RULES</button>
+                    <button id="skinsBtn" class="nav-btn">SKINS</button>
+                </div>
+                <div class="subnote">Choose a class → See instruction manual → Start fight!</div>
+            `;
+            document.getElementById("classAssaultBtn").onclick = () => { showInstructionManualThenStart("Assault"); };
+            document.getElementById("classSniperBtn").onclick = () => { showInstructionManualThenStart("Sniper"); };
+            document.getElementById("classTankBtn").onclick = () => { showInstructionManualThenStart("Tank"); };
+            document.getElementById("showClassesBtn").onclick = showClassesMenu;
+            document.getElementById("rulesBtn").onclick = showRulesMenu;
+            document.getElementById("skinsBtn").onclick = showSkinsMenu;
+        }
+        
+        function showClassesMenu() {
+            overlayDiv.innerHTML = `<h2>CLASS INFO</h2><div style="display:flex;flex-wrap:wrap;gap:15px;"><div class="class-card"><h3>ASSAULT</h3><div class="class-stats">HP:110 | Speed:3.2 | Dmg:11 | Fast fire</div><div class="class-stats">Evolution Lv25: Machine Gun (spray) or Double Gunner</div></div><div class="class-card"><h3>SNIPER</h3><div class="class-stats">HP:75 | Speed:2.6 | Dmg:27 | Slow fire</div><div class="class-stats">Evolution: Giant Sniper or Homing Missiles</div></div><div class="class-card"><h3>TANK</h3><div class="class-stats">HP:280 | Speed:2.1 | Dmg:9</div><div class="class-stats">Evolution: Tiger Tank (2x HP) or Stationary Tank</div></div></div><button id="backMain" class="nav-btn">BACK</button>`;
+            document.getElementById("backMain").onclick = showMainMenu;
+        }
+        function showRulesMenu() {
+            overlayDiv.innerHTML = `<h2>RULES</h2><div class="rules-panel">WASD/Arrows move, hold click/SPACE to shoot. E = use powerup.<br>Kill enemies gain XP. Level up triggers a SAFETY QUIZ! Answer correctly to get an upgrade or evolution (wrong answer = -10 HP). Boss spawns at score 16. Powerups spawn every 10s.</div><button id="backMain2" class="nav-btn">BACK</button>`;
+            document.getElementById("backMain2").onclick = showMainMenu;
+        }
+        function showSkinsMenu() {
+            overlayDiv.innerHTML = `<h2>SKINS</h2><div style="display:flex; gap:15px; justify-content:center;"><div class="skin-option" style="background:#42f5aa;" data-skin="blue"></div><div class="skin-option" style="background:#ff5555;" data-skin="red"></div><div class="skin-option" style="background:#55ff55;" data-skin="green"></div><div class="skin-option" style="background:#ffdd44;" data-skin="yellow"></div></div><button id="backMain3" class="nav-btn">BACK</button>`;
+            document.querySelectorAll('.skin-option').forEach(opt => { opt.addEventListener('click', () => { setSkin(opt.getAttribute('data-skin')); showSkinsMenu(); }); });
+            document.getElementById("backMain3").onclick = showMainMenu;
+        }
+        
+        // ----- DRAW (no emojis, same style)-----
+        function draw() {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            ctx.fillStyle="#1d2c1a"; ctx.fillRect(0,0,canvas.width,canvas.height);
+            if(powerupObject){ ctx.fillStyle = powerupObject.type === "bomb" ? "#ff4444" : (powerupObject.type === "health" ? "#44ff44" : "#ffaa44"); ctx.shadowBlur = 10; ctx.beginPath(); ctx.arc(powerupObject.x, powerupObject.y, 12, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "white"; ctx.font = "bold 16px monospace"; let letter = powerupObject.type === "bomb" ? "B" : (powerupObject.type === "health" ? "H" : "I"); ctx.fillText(letter, powerupObject.x-5, powerupObject.y+6); ctx.shadowBlur = 0; }
+            for(let e of enemies){ ctx.fillStyle="#d64531"; ctx.beginPath(); ctx.arc(e.x,e.y,e.size-2,0,Math.PI*2); ctx.fill(); ctx.fillStyle="#b82b1a"; ctx.beginPath(); ctx.arc(e.x,e.y,e.size,0,Math.PI*2); ctx.fill(); ctx.fillStyle="white"; ctx.font="bold 12px monospace"; ctx.fillText(Math.floor(e.hp), e.x-12, e.y-8); }
+            if(boss){ ctx.fillStyle="#b0306e"; ctx.shadowBlur=8; ctx.beginPath(); ctx.arc(boss.x,boss.y,boss.size,0,Math.PI*2); ctx.fill(); ctx.fillStyle="#ff66aa"; ctx.beginPath(); ctx.arc(boss.x,boss.y,boss.size-6,0,Math.PI*2); ctx.fill(); ctx.fillStyle="white"; ctx.font="bold 20px monospace"; ctx.fillText(`BOSS ${Math.floor(boss.hp)}/${boss.maxHp}`, boss.x-55, boss.y-35); ctx.fillStyle="orange"; ctx.fillRect(boss.x-50, boss.y-50, 100*(boss.hp/boss.maxHp), 10); ctx.shadowBlur=0; }
+            for(let p of bossProjectiles){ ctx.fillStyle="#ff884d"; ctx.beginPath(); ctx.arc(p.x,p.y,7,0,Math.PI*2); ctx.fill(); ctx.fillStyle="#ff4400"; ctx.beginPath(); ctx.arc(p.x,p.y,4,0,Math.PI*2); ctx.fill(); }
+            for(let b of bullets){ ctx.fillStyle=b.giant?"#ffee88":"#ffd966"; ctx.beginPath(); ctx.arc(b.x,b.y,b.size?b.size-2:5,0,Math.PI*2); ctx.fill(); }
+            if(player){ let skin = skinColors[currentSkin] || skinColors.blue; ctx.save(); ctx.translate(player.x,player.y); if(invincibleFrames > 0 && (Math.floor(Date.now()/50)%2===0)){ ctx.fillStyle = "#ffff88"; } else { ctx.fillStyle = skin.main; } ctx.beginPath(); ctx.arc(0,0,player.size-1,0,Math.PI*2); ctx.fill(); ctx.fillStyle = skin.dark; ctx.beginPath(); ctx.arc(0,0,player.size-5,0,Math.PI*2); ctx.fill(); ctx.rotate(player.angle); ctx.fillStyle = skin.light; ctx.fillRect(14,-4,16,8); ctx.restore(); let hpPercent = player.hp/player.maxHp; ctx.fillStyle="#4a2a2a"; ctx.fillRect(player.x-20, player.y-22, 40, 6); ctx.fillStyle="#f55c5c"; ctx.fillRect(player.x-20, player.y-22, 40*hpPercent, 5); }
+        }
+        
+        // ----- EVENT SETUP -----
+        function setupEvents(){
+            canvas.setAttribute("tabindex","0");
+            canvas.addEventListener("mousemove",(e)=>{ let rect=canvas.getBoundingClientRect(); let sx=canvas.width/rect.width, sy=canvas.height/rect.height; mouse.x=(e.clientX-rect.left)*sx; mouse.y=(e.clientY-rect.top)*sy; mouse.x=Math.min(Math.max(0,mouse.x),canvas.width); mouse.y=Math.min(Math.max(0,mouse.y),canvas.height); });
+            window.addEventListener("keydown",(e)=>{ let key = e.key.toLowerCase(); keys[key]=true; if(key === " " || key === "space"){ e.preventDefault(); shoot(); } if(key === "e"){ e.preventDefault(); usePowerup(); } });
+            window.addEventListener("keyup",(e)=>keys[e.key.toLowerCase()]=false);
+            canvas.addEventListener("mousedown",(e)=>{ e.preventDefault(); shootHeld=true; canvas.focus(); });
+            window.addEventListener("mouseup",()=>shootHeld=false);
+            canvas.addEventListener("contextmenu",e=>e.preventDefault());
+            quickRestart.addEventListener("click",()=>{ fullGameRestart(); });
+        }
+        setupEvents();
+        showMainMenu();
+        function gameLoop(time){ updateGame(time); draw(); requestAnimationFrame(gameLoop); }
+        gameLoop();
+    })();
+</script>
+</body>
+</html>
