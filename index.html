@@ -564,7 +564,7 @@
         // ----- LEVEL UP TRIGGER (quiz then upgrade/evo with penalty) -----
         function handleLevelUp() {
             if(!running) return;
-            const evolutionReady = (level === 5 && !evolvedForm);
+            const evolutionReady = (level === 2 && !evolvedForm);
             showSafetyQuiz((isCorrect) => {
                 // Apply -10 HP penalty if wrong answer
                 if(!isCorrect && player) {
